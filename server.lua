@@ -59,7 +59,7 @@ addEventHandler("onResourceStop", resourceRoot, function()
 end)
 
 addEvent("attachObjectToVehicle", true)
-addEventHandler("attachObjectToVehicle", resourceRoot, function(veh, modelID, offset, rotation)
+addEventHandler("attachObjectToVehicle", resourceRoot, function(veh, modelID, offset, rotation, scale)
     if not isElement(veh) or not ensureValidModel(modelID) then
         triggerClientEvent(client, "onAttachmentError", resourceRoot, "Invalid vehicle or model ID")
         return
@@ -89,13 +89,16 @@ addEventHandler("attachObjectToVehicle", resourceRoot, function(veh, modelID, of
     setElementDoubleSided(obj, true)
     setElementAlpha(obj, 255) -- Ensure full visibility
     
-    -- Use provided offset and rotation if available, otherwise use defaults
+    -- Use provided offset, rotation and scale if available
     local offsetX = offset and offset.x or 0
     local offsetY = offset and offset.y or 0
     local offsetZ = offset and offset.z or 2
     local rotX = rotation and rotation.x or 0
     local rotY = rotation and rotation.y or 0
     local rotZ = rotation and rotation.z or 0
+    local scaleX = scale and scale.x or 1
+    local scaleY = scale and scale.y or 1
+    local scaleZ = scale and scale.z or 1
     
     -- Debug output on server
     outputDebugString(string.format("Attaching object %d to vehicle with offset: %.2f, %.2f, %.2f rotation: %.2f, %.2f, %.2f",
@@ -104,6 +107,7 @@ addEventHandler("attachObjectToVehicle", resourceRoot, function(veh, modelID, of
     if attachElements(obj, veh, offsetX, offsetY, offsetZ, rotX, rotY, rotZ) then
         table.insert(vehicleAttachments[veh], obj)
         setElementDoubleSided(obj, true) -- Make object visible from all sides
+        setObjectScale(obj, scaleX, scaleY, scaleZ)
         triggerClientEvent(client, "onObjectAttached", resourceRoot, obj)
     else
         destroyElement(obj)
