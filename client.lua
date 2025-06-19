@@ -29,9 +29,14 @@ local function loadObjectsFromXML()
 
     local catalog = xmlFindChild(xml, "catalog", 0)
     if not catalog then
-        outputChatBox("Invalid objects.xml format", 255, 0, 0)
-        xmlUnloadFile(xml)
-        return
+        -- handle case where <catalog> is the root node
+        if xmlNodeGetName(xml) == "catalog" then
+            catalog = xml
+        else
+            outputChatBox("Invalid objects.xml format", 255, 0, 0)
+            xmlUnloadFile(xml)
+            return
+        end
     end
 
     for _, group in ipairs(xmlNodeGetChildren(catalog)) do
@@ -287,7 +292,7 @@ local function updateTransformSliders()
 end
 
 -- Functions
-local function removeAttachedObject(obj
+local function removeAttachedObject(obj)
     if not isElement(obj) then return end
     triggerServerEvent("removeAttachedObject", resourceRoot, obj)
     local index = getAttachedObjectIndex(obj)

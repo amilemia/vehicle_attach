@@ -3,6 +3,7 @@
     <info author="Generated" version="3.0" name="Vehicle Object Attacher Full" type="script"/>
     <script src="client.lua" type="client"/>
     <script src="server.lua" type="server"/>
+    <file src="objects.xml"/>
     <oop>true</oop>
     <min_mta_version client="1.5.2" server="1.5.2"/>
     <!-- Required function -->
