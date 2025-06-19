@@ -5,7 +5,8 @@ local vehicleAttachments = {} -- Track attachments per vehicle
 
 -- Initialize valid object IDs
 addEventHandler("onResourceStart", resourceRoot, function()
-    for i = 1000, 20000 do
+    -- Include lower model IDs so objects from XML are accepted
+    for i = 300, 20000 do
         if engineGetModelNameFromID(i) then
             VALID_OBJECT_IDS[i] = true
         end
