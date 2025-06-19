@@ -59,10 +59,12 @@ end
 
 -- Cache valid objects
 addEventHandler("onClientResourceStart", resourceRoot, function()
-    for i = 1000, 20000 do
+    -- Include lower IDs so XML objects display with valid names
+    for i = 300, 20000 do
         local modelName = engineGetModelNameFromID(i)
         if modelName then
-            table.insert(cachedObjects, {id = i, name = modelName})
+            -- Use the same key for the model ID as objects loaded from XML
+            table.insert(cachedObjects, {model = i, name = modelName})
             debugOutput("Cached object: ID=" .. i .. ", Name=" .. modelName)
         end
     end
