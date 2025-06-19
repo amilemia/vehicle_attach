@@ -13,10 +13,8 @@ local updateObjectList
 local toggleWindow
 
 -- Preview object variables
-local previewObject = nil
-local isPreviewMode = false
-local previewOffset = {x = 0, y = 0, z = 2}
-local previewRotation = {x = 0, y = 0, z = 0}
+-- Object currently being positioned before final attachment
+local pendingObject = nil
 
 -- Debug function
 local function debugOutput(message)
@@ -71,6 +69,7 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
     debugOutput("Total cached objects: " .. #cachedObjects)
     loadObjectsFromXML()
     updateObjectList()
+    updateFavoritesList()
     bindKey("F7", "down", toggleWindow)
 end)
 
@@ -84,6 +83,7 @@ guiSetVisible(window, false)
 local tabPanel = guiCreateTabPanel(10, 25, 780, 565, false, window)
 local attachTab = guiCreateTab("Attach Objects", tabPanel)
 local transformTab = guiCreateTab("Transform", tabPanel)
+local favoritesTab = guiCreateTab("Favorites", tabPanel)
 
 -- Attach tab elements
 local objectList = guiCreateGridList(10, 10, 380, 400, false, attachTab)
@@ -120,6 +120,12 @@ for i, label in ipairs(labels) do
     guiScrollBarSetScrollPosition(sliders[label], 50)
 end
 
+-- Favorites tab elements
+local favoritesList = guiCreateGridList(10, 10, 760, 480, false, favoritesTab)
+guiGridListAddColumn(favoritesList, "ID", 0.2)
+guiGridListAddColumn(favoritesList, "Name", 0.7)
+local removeFavBtn = guiCreateButton(10, 500, 150, 30, "Remove Favorite", false, favoritesTab)
+
 -- Functions
 updateObjectList = function()
     guiGridListClear(objectList)
@@ -133,6 +139,15 @@ updateObjectList = function()
     end
 
     guiSetText(pageLabel, string.format("Page %d/%d", currentPage, math.ceil(#cachedObjects / ITEMS_PER_PAGE)))
+end
+
+local function updateFavoritesList()
+    guiGridListClear(favoritesList)
+    for _, fav in ipairs(favoriteObjects) do
+        local row = guiGridListAddRow(favoritesList)
+        guiGridListSetItemText(favoritesList, row, 1, tostring(fav.model), false, false)
+        guiGridListSetItemText(favoritesList, row, 2, fav.name, false, false)
+    end
 end
 
 local function updateAttachedList()
@@ -267,9 +282,6 @@ addEventHandler("onObjectAttached", resourceRoot, function(obj)
             end
             xmlUnloadFile(xml)
         end
-    else
-        -- Set default position if no save file
-        setElementAttachedOffsets(obj, 0, 0, 2, 0, 0, 0)
     end
     
     updateAttachedList()
@@ -312,100 +324,33 @@ local function removeAttachedObject(obj)
     updateAttachedList()
 end
 
--- Function to update preview object position
-local function updatePreviewPosition()
-    if not previewObject or not isElement(previewObject) then return end
-    
-    local veh = getPedOccupiedVehicle(localPlayer)
-    if not veh then return end
-    
-    local vx, vy, vz = getElementPosition(veh)
-    local vrx, vry, vrz = getElementRotation(veh)
-    
-    -- Set position relative to vehicle
-    setElementAttachedOffsets(previewObject, previewOffset.x, previewOffset.y, previewOffset.z,
-                            previewRotation.x, previewRotation.y, previewRotation.z)
+-- Helper to remove any pending object
+local function destroyPendingObject()
+    if pendingObject and isElement(pendingObject) then
+        destroyElement(pendingObject)
+    end
+    pendingObject = nil
+    selectedObject = nil
 end
 
--- Function to create preview object
-local function createPreviewObject(modelId)
-    if previewObject and isElement(previewObject) then
-        destroyElement(previewObject)
-    end
-    
+-- Create a temporary object for placement
+local function createPendingObject(modelId)
+    destroyPendingObject()
+
     local veh = getPedOccupiedVehicle(localPlayer)
     if not veh then return end
-    
-    debugOutput("Creating preview for model: " .. tostring(modelId))
-    
+
     local x, y, z = getElementPosition(veh)
-    previewObject = createObject(modelId, x, y, z + 3) -- Create above vehicle for visibility
-    if not previewObject then
-        debugOutput("Failed to create preview object")
-        return
-    end
-    
-    setElementCollisionsEnabled(previewObject, false)
-    setElementAlpha(previewObject, 180) -- Make it semi-transparent
-    setElementDoubleSided(previewObject, true) -- Make visible from all sides
-    
-    -- Attach preview object to vehicle
-    attachElements(previewObject, veh, 0, 0, 2)
-    
-    -- Reset preview position and rotation
-    previewOffset = {x = 0, y = 0, z = 2}
-    previewRotation = {x = 0, y = 0, z = 0}
-    
-    isPreviewMode = true
-    updatePreviewPosition()
-    debugOutput("Preview object created and attached")
+    pendingObject = createObject(modelId, x, y, z + 2)
+    if not pendingObject then return end
+
+    setElementCollisionsEnabled(pendingObject, false)
+    setElementDoubleSided(pendingObject, true)
+    attachElements(pendingObject, veh, 0, 0, 2)
+
+    selectedObject = pendingObject
+    updateTransformSliders()
 end
-
--- Function to destroy preview object
-local function destroyPreviewObject()
-    if previewObject and isElement(previewObject) then
-        destroyElement(previewObject)
-        previewObject = nil
-    end
-    isPreviewMode = false
-end
-
--- Preview movement controls
-local MOVEMENT_SPEED = 0.1
-local ROTATION_SPEED = 5
-
-addEventHandler("onClientRender", root, function()
-    if not isPreviewMode or not previewObject or not isElement(previewObject) then return end
-    
-    local keys = {
-        moveForward = getKeyState("num_8"),
-        moveBack = getKeyState("num_2"),
-        moveLeft = getKeyState("num_4"),
-        moveRight = getKeyState("num_6"),
-        moveUp = getKeyState("num_9"),
-        moveDown = getKeyState("num_3"),
-        rotateLeft = getKeyState("num_7"),
-        rotateRight = getKeyState("num_1"),
-        rotateUp = getKeyState("num_5"),
-        rotateDown = getKeyState("num_0")
-    }
-    
-    -- Position adjustments
-    if keys.moveForward then previewOffset.y = previewOffset.y + MOVEMENT_SPEED end
-    if keys.moveBack then previewOffset.y = previewOffset.y - MOVEMENT_SPEED end
-    if keys.moveLeft then previewOffset.x = previewOffset.x - MOVEMENT_SPEED end
-    if keys.moveRight then previewOffset.x = previewOffset.x + MOVEMENT_SPEED end
-    if keys.moveUp then previewOffset.z = previewOffset.z + MOVEMENT_SPEED end
-    if keys.moveDown then previewOffset.z = previewOffset.z - MOVEMENT_SPEED end
-    
-    -- Rotation adjustments
-    if keys.rotateLeft then previewRotation.z = previewRotation.z - ROTATION_SPEED end
-    if keys.rotateRight then previewRotation.z = previewRotation.z + ROTATION_SPEED end
-    if keys.rotateUp then previewRotation.x = previewRotation.x - ROTATION_SPEED end
-    if keys.rotateDown then previewRotation.x = previewRotation.x + ROTATION_SPEED end
-    
-    updatePreviewPosition()
-end)
 
 -- Event handlers
 addEventHandler("onClientGUIClick", root, function()
@@ -416,19 +361,15 @@ addEventHandler("onClientGUIClick", root, function()
         currentPage = currentPage + 1
         updateObjectList()
     elseif source == attachBtn then
-        local row = guiGridListGetSelectedItem(objectList)
-        if row ~= -1 then
-            local modelId = tonumber(guiGridListGetItemText(objectList, row, 1))
+        if pendingObject and isElement(pendingObject) then
             local veh = getPedOccupiedVehicle(localPlayer)
             if veh then
-                if isPreviewMode and previewObject then
-                    -- Use preview position for attachment
-                    triggerServerEvent("attachObjectToVehicle", resourceRoot, veh, modelId, previewOffset, previewRotation)
-                    destroyPreviewObject()
-                else
-                    -- Use default position if no preview
-                    triggerServerEvent("attachObjectToVehicle", resourceRoot, veh, modelId)
-                end
+                local modelId = getElementModel(pendingObject)
+                local x, y, z, rx, ry, rz = getElementAttachedOffsets(pendingObject)
+                local sx, sy, sz = getObjectScale(pendingObject)
+                triggerServerEvent("attachObjectToVehicle", resourceRoot, veh, modelId,
+                    {x = x, y = y, z = z}, {x = rx, y = ry, z = rz}, {x = sx, y = sy, z = sz})
+                destroyPendingObject()
             else
                 outputChatBox("You must be in a vehicle to attach objects.", 255, 0, 0)
             end
@@ -452,18 +393,33 @@ addEventHandler("onClientGUIClick", root, function()
     elseif source == objectList then
         local now = getTickCount()
         local row = guiGridListGetSelectedItem(objectList)
-        if now - lastClickTime < 500 then -- Double click
+        if row ~= -1 then
             local modelId = tonumber(guiGridListGetItemText(objectList, row, 1))
-            if modelId then
-                createPreviewObject(modelId)
+            local name = guiGridListGetItemText(objectList, row, 2)
+            if now - lastClickTime < 500 then -- Double click to favorite
+                table.insert(favoriteObjects, {model = modelId, name = name})
+                updateFavoritesList()
+            else -- Single click to preview for placement
+                if modelId then
+                    createPendingObject(modelId)
+                end
             end
-        else -- Single click
-            local modelId = tonumber(guiGridListGetItemText(objectList, row, 1))
+            lastClickTime = getTickCount()
+        end
+    elseif source == favoritesList then
+        local row = guiGridListGetSelectedItem(favoritesList)
+        if row ~= -1 then
+            local modelId = tonumber(guiGridListGetItemText(favoritesList, row, 1))
             if modelId then
-                selectedObject = nil -- Clear selected object when selecting from object list
+                createPendingObject(modelId)
             end
         end
-        lastClickTime = getTickCount()
+    elseif source == removeFavBtn then
+        local row = guiGridListGetSelectedItem(favoritesList)
+        if row ~= -1 then
+            table.remove(favoriteObjects, row + 1)
+            updateFavoritesList()
+        end
     end
 end)
 
@@ -530,6 +486,7 @@ addEventHandler("onClientResourceStop", resourceRoot, function()
     if fileExists(xmlFile) then
         fileDelete(xmlFile)
     end
+    destroyPendingObject()
     unbindKey("F7", "down", toggleWindow)
 end)
 
@@ -548,6 +505,9 @@ toggleWindow = function()
     local isVisible = guiGetVisible(window)
     guiSetVisible(window, not isVisible)
     showCursor(not isVisible)
+    if isVisible then
+        destroyPendingObject()
+    end
 end
 
 function getAttachedObjectIndex(obj)
