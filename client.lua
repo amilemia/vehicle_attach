@@ -65,6 +65,7 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
     debugOutput("Total cached objects: " .. #cachedObjects)
     loadObjectsFromXML()
     updateObjectList()
+    bindKey("F7", "down", toggleWindow)
 end)
 
 -- Create main window
@@ -523,6 +524,7 @@ addEventHandler("onClientResourceStop", resourceRoot, function()
     if fileExists(xmlFile) then
         fileDelete(xmlFile)
     end
+    unbindKey("F7", "down", toggleWindow)
 end)
 
 addEvent("onAttachmentError", true)
@@ -530,17 +532,17 @@ addEventHandler("onAttachmentError", resourceRoot, function(message)
     outputChatBox(message, 255, 0, 0)
 end)
 
-bindKey("F7", "down", function()
+local function toggleWindow()
     local veh = getPedOccupiedVehicle(localPlayer)
     if not veh then
         outputChatBox("You need to be in a vehicle to use this menu.", 255, 0, 0)
         return
     end
-    
+
     local isVisible = guiGetVisible(window)
     guiSetVisible(window, not isVisible)
     showCursor(not isVisible)
-end)
+end
 
 function getAttachedObjectIndex(obj)
     for i, attachedObj in ipairs(attachedObjects) do
