@@ -8,6 +8,10 @@ local currentPage = 1
 local cachedObjects = {}
 local errorMessages = {}
 
+-- Forward declarations
+local updateObjectList
+local toggleWindow
+
 -- Preview object variables
 local previewObject = nil
 local isPreviewMode = false
@@ -115,7 +119,7 @@ for i, label in ipairs(labels) do
 end
 
 -- Functions
-local function updateObjectList()
+updateObjectList = function()
     guiGridListClear(objectList)
     local startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1
     local endIndex = math.min(startIndex + ITEMS_PER_PAGE - 1, #cachedObjects)
@@ -532,7 +536,7 @@ addEventHandler("onAttachmentError", resourceRoot, function(message)
     outputChatBox(message, 255, 0, 0)
 end)
 
-local function toggleWindow()
+toggleWindow = function()
     local veh = getPedOccupiedVehicle(localPlayer)
     if not veh then
         outputChatBox("You need to be in a vehicle to use this menu.", 255, 0, 0)
