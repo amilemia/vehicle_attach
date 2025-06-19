@@ -535,7 +535,7 @@ end)
 
 addEvent("onAttachmentError", true)
 addEventHandler("onAttachmentError", resourceRoot, function(message)
-    outputChatBox(message, 255, 0, 0)
+    outputChatBox("Attachment Error: " .. tostring(message), 255, 0, 0)
 end)
 
 toggleWindow = function()

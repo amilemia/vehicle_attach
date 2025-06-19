@@ -1,6 +1,18 @@
 -- Configuration
 local MAX_ATTACHMENTS_PER_VEHICLE = 10
-local VALID_OBJECT_IDS = {} -- Will be populated on resource start
+-- Cache of model IDs confirmed valid via engineGetModelNameFromID
+local VALID_OBJECT_IDS = {}
+
+-- Helper to lazily validate model IDs
+local function ensureValidModel(id)
+    if type(id) ~= "number" then return false end
+    if VALID_OBJECT_IDS[id] then return true end
+    if engineGetModelNameFromID(id) then
+        VALID_OBJECT_IDS[id] = true
+        return true
+    end
+    return false
+end
 local vehicleAttachments = {} -- Track attachments per vehicle
 
 -- Initialize valid object IDs
@@ -48,7 +60,7 @@ end)
 
 addEvent("attachObjectToVehicle", true)
 addEventHandler("attachObjectToVehicle", resourceRoot, function(veh, modelID, offset, rotation)
-    if not isElement(veh) or type(modelID) ~= "number" or not VALID_OBJECT_IDS[modelID] then
+    if not isElement(veh) or not ensureValidModel(modelID) then
         triggerClientEvent(client, "onAttachmentError", resourceRoot, "Invalid vehicle or model ID")
         return
     end
