@@ -29,9 +29,14 @@ local function loadObjectsFromXML()
 
     local catalog = xmlFindChild(xml, "catalog", 0)
     if not catalog then
-        outputChatBox("Invalid objects.xml format", 255, 0, 0)
-        xmlUnloadFile(xml)
-        return
+        -- handle case where <catalog> is the root node
+        if xmlNodeGetName(xml) == "catalog" then
+            catalog = xml
+        else
+            outputChatBox("Invalid objects.xml format", 255, 0, 0)
+            xmlUnloadFile(xml)
+            return
+        end
     end
 
     for _, group in ipairs(xmlNodeGetChildren(catalog)) do
@@ -60,6 +65,7 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
     debugOutput("Total cached objects: " .. #cachedObjects)
     loadObjectsFromXML()
     updateObjectList()
+    bindKey("F7", "down", toggleWindow)
 end)
 
 -- Create main window
@@ -287,7 +293,7 @@ local function updateTransformSliders()
 end
 
 -- Functions
-local function removeAttachedObject(obj
+local function removeAttachedObject(obj)
     if not isElement(obj) then return end
     triggerServerEvent("removeAttachedObject", resourceRoot, obj)
     local index = getAttachedObjectIndex(obj)
@@ -518,6 +524,7 @@ addEventHandler("onClientResourceStop", resourceRoot, function()
     if fileExists(xmlFile) then
         fileDelete(xmlFile)
     end
+    unbindKey("F7", "down", toggleWindow)
 end)
 
 addEvent("onAttachmentError", true)
@@ -525,17 +532,17 @@ addEventHandler("onAttachmentError", resourceRoot, function(message)
     outputChatBox(message, 255, 0, 0)
 end)
 
-bindKey("F7", "down", function()
+local function toggleWindow()
     local veh = getPedOccupiedVehicle(localPlayer)
     if not veh then
         outputChatBox("You need to be in a vehicle to use this menu.", 255, 0, 0)
         return
     end
-    
+
     local isVisible = guiGetVisible(window)
     guiSetVisible(window, not isVisible)
     showCursor(not isVisible)
-end)
+end
 
 function getAttachedObjectIndex(obj)
     for i, attachedObj in ipairs(attachedObjects) do
